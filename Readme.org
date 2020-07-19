@@ -1,0 +1,81 @@
+#+TITLE: Linux-exec
+
+A simple script to run linux binaries inside containers.
+The main use case is running linux's binaries on macOS without much hassle.
+
+* Prerequisites
+
+- Python 3
+- Docker
+
+* Configuration
+
+You can configure some aspects of the script's behavior with the following environment variables
+
+| VARIABLE     | DEFAULT           | DESCRIPTION                                                      |
+|--------------+-------------------+------------------------------------------------------------------|
+| LE_PREFIX    | le-               | Prefix to remove from a link.                                    |
+| LE_MEM       | 1g                | Memory limit.                                                    |
+| LE_DOCKERCMD | docker            | Docker command to use.                                           |
+| LE_PACKAGES  | /empty/           | Space-separated list of packages to install.                     |
+| LE_CWD       | /cwd/             | Working directory.                                               |
+| LE_MOUNTS    | /empty/           | Colon-separated (':') path to identity-mount inside a container. |
+| LE_TAG       | linux-exec:<hash> | The image's tag to use. Hash is =md5($LE_PACKAGES)=              |
+
+
+* Usage
+
+There are several ways to use the script.
+
+** Run the script directly without arguments
+#+BEGIN_SRC shell
+$ ./linux-exec.py
+#+END_SRC
+
+It will build a docker image for a specified configuration.
+Note, that this step is not required. The script will build an image automatically if it's missing.
+
+** Run the script directly with a program to run as an argument
+
+#+BEGIN_SRC shell
+$ ./linux-exec.py gcc -c -o test.o test.c
+#+END_SRC
+
+As expected, it will compile =test.c= using linux's gcc.
+(although, in such a situation it would be easier to use a cross-compiler)
+
+** Make a symbolic link
+
+#+BEGIN_SRC shell
+$ ln -s ./linux-exec.py ./gcc
+$ ./gcc -c -o test.o test.c
+#+END_SRC
+
+The script then will try to run utility with link's name.
+Usually, you would create a symlink inside a directory that is contained in your $PATH.
+
+** Make a symbolic link with =$LE_PREFIX= prefix
+
+#+BEGIN_SRC shell
+$ ln -s ./linux-exec.py ./le-gcc
+$ ./le-gcc -c -o test.o test.c
+#+END_SRC
+
+Same as above, but the prefix will be removed before execution.
+
+* Examples
+
+** Build mainline linux kernel
+
+#+BEGIN_SRC shell
+$ git clone <repo>
+$ ln -s $(pwd)/<repodir>/linux-exec.py $(pwd)/<repodir>/le-make
+$ export PATH="$PATH:$(pwd)/<repodir>"
+$ git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+$ cd linux
+$ export LE_MEM="4g"
+$ export LE_PACKAGES="base-devel bc inetutils clang lld llvm"
+$ export LE_TAG="linux-exec-linux"
+$ le-make LLVM=1 defconfig
+$ le-make LLVM=1 -j6
+#+END_SRC
